@@ -2245,20 +2245,35 @@ class Ui(QtWidgets.QMainWindow):
                 with open(os.path.join(file_path,file_name)) as f:
                     lines = f.readlines()
 
-                    print(lines[3].split())
-                    print(lines[4].split())
+                    l3 = lines[3].split() if len(lines) > 3 else []
+                    l4 = lines[4].split() if len(lines) > 4 else []
                     
+                    print(l3)
+                    print(l4)
+                    if event_name.startswith('ev_'):
+                        parts = event_name.split('_')
+                        self.event_date = parts[1] if len(parts) > 1 else ""
+                        self.event_time = parts[2] if len(parts) > 2 else ""
+                    else:
+                        parts = event_name.split('_')
+                        self.event_date = parts[0] if len(parts) > 0 else ""
+                        self.event_time = parts[1] if len(parts) > 1 else ""
                     
-                    if lines[3].split()[13] == "'KTJ'" or lines[3].split()[15] == "'KTJ'" or lines[4].split()[15] == "'KTJ'":
+                    spectral_bz2_path = f"/srv/meteor/klingon/events/{self.event_date}/ev_{self.event_date}_{self.event_time}_02I.vid.bz2"
+                    direct_bz2_path = f"/srv/meteor/klingon/events/{self.event_date}/ev_{self.event_date}_{self.event_time}_02J.vid.bz2"
+                    
+                    print("Checking for spectral file:", spectral_bz2_path)
+                    
+                    if os.path.exists(spectral_bz2_path):
                         height = []
                         vel = []
-                        self.event_date = event_name.split('_')[0]
-                        self.event_time = event_name.split('_')[1]
 
                         try:
                             self.spectral.vinfinity_kmsec = float(lines[4].split()[13])
                         except:
                             self.spectral.vinfinity_kmsec = 20.0
+                            
+                        self.MeteorSpeed_rollbox.setValue(self.spectral.vinfinity_kmsec)
                         print('Vinf1: %f' % self.spectral.vinfinity_kmsec)
                         for line in lines:
                             if line.split()[0] == 'fit':
@@ -2277,31 +2292,47 @@ class Ui(QtWidgets.QMainWindow):
                         self.meteor_speed = np.average(vel[1:len(vel)//2])
                         
 
-                        ### Now, use the event_name to open the vid file. Will need to decompress bz2, first
-                        with bz2.open('/srv/meteor/klingon/events/' + self.event_date + '/ev_' + event_name + '_02I.vid.bz2') as f:
-                            spectral_vid = f.read()
+                        ### Now, open the vid file. Decompress bz2 first.
+                        import subprocess
+                        
+                        spectral_file_name = f'/tmp/ev_{self.event_date}_{self.event_time}_02I.vid'
+                        try:
+                            with open(spectral_file_name, 'wb') as out_f:
+                                subprocess.run(['bzcat', spectral_bz2_path], stdout=out_f, check=True)
+                            print('Spectral file written to /tmp using bzcat ...')
+                        except Exception:
+                            print('bzcat failed, falling back to python bz2...')
+                            with bz2.open(spectral_bz2_path) as f:
+                                spectral_vid = f.read()
+                            with open(spectral_file_name, 'wb') as f:
+                                f.write(spectral_vid)
+                                print('Spectral file written to /tmp using bz2 ...')
 
-                        spectral_file_name = f'/tmp/ev_{event_name}_02I.vid'
-                        with open(spectral_file_name, 'wb') as f:
-                            f.write(spectral_vid)
-                            print('Spectral file written to /tmp ...')
-
-                        with bz2.open('/srv/meteor/klingon/events/' + self.event_date + '/ev_' + event_name + '_02J.vid.bz2') as f:
-                            direct_vid = f.read()
-                            # print(type(test_vid))
-
-                        direct_file_name = f'/tmp/ev_{event_name}_02J.vid'
-                        with open(direct_file_name, 'wb') as f:
-                            f.write(direct_vid)
-                            print('Direct file written to /tmp ...')
+                        if os.path.exists(direct_bz2_path):
+                            direct_file_name = f'/tmp/ev_{self.event_date}_{self.event_time}_02J.vid'
+                            try:
+                                with open(direct_file_name, 'wb') as out_f:
+                                    subprocess.run(['bzcat', direct_bz2_path], stdout=out_f, check=True)
+                                print('Direct file written to /tmp using bzcat ...')
+                            except Exception:
+                                print('bzcat failed, falling back to python bz2...')
+                                with bz2.open(direct_bz2_path) as f:
+                                    direct_vid = f.read()
+                                with open(direct_file_name, 'wb') as f:
+                                    f.write(direct_vid)
+                                    print('Direct file written to /tmp using bz2 ...')
+                        else:
+                            print(f'Direct file not found at {direct_bz2_path}')
+                            direct_file_name = None
 
                         event_split = event_name.split('_')
                         
                         #self.uploadDirectVid(direct_file_name)
                         self.uploadSpectralVid(spectral_file_name)
 
-                        os.remove(direct_file_name)
-                        print('Direct file removed from /tmp ...')
+                        if direct_file_name:
+                            os.remove(direct_file_name)
+                            print('Direct file removed from /tmp ...')
                         os.remove(spectral_file_name)
                         print('Spectral file removed from /tmp ...')
 
