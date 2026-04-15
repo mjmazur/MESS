@@ -1174,7 +1174,7 @@ class Ui(QtWidgets.QMainWindow):
         print('Index of min observed: %s' % np.where(star_x == np.round(self.scaled_spectral_x_min)))
         print('Index of max observed: %s' % np.where(star_x == np.round(self.scaled_spectral_x_max)))
 
-        self.star_x_clipped = star_x[index_min:index_max]
+        self.star_x_clipped = star_x[int(index_min):int(index_max)]
 
         # Set axis titles 
         self.Plot.setLabel('left', 'Intensity')
@@ -1258,7 +1258,7 @@ class Ui(QtWidgets.QMainWindow):
                 # print(flat_file_name[0])
                
                 # Load the flat image
-                flat_img = loadImage(flat_file_name[0], -1)
+                flat_img = loadImage(os.path.split(flat_file_name[0])[0], os.path.split(flat_file_name[0])[1])
 
                 # # Change the file type if given
                 # if dtype is not None:
@@ -1388,7 +1388,7 @@ class Ui(QtWidgets.QMainWindow):
 
         with open(os.path.join(self.SavePath_edit.text(),'starspectrum.txt'), 'w') as f:
             for w in range(len(scaled_spectral_profile)):
-                f.write('%f %f\n' % (scaled_spectral[w], star_y[w]))
+                f.write('%f %f\n' % (scaled_spectral_profile[w], self.spectral_profile[w]))
        
 
     def calculateScale(self):
@@ -1883,7 +1883,7 @@ class Ui(QtWidgets.QMainWindow):
             print('Warm and Hot are both on.')
             # spectral_library.GuralSpectral.computeWarmPlasmaSpectrum(self.spectral)
             # spectral_library.GuralSpectral.computeHotPlasmaSpectrum(self.spectral)
-            if self.spectral.elemdata.els[self.elemIndex].speclo:
+            if not self.spectral.elemdata.els[self.elemIndex].speclo:
                 print(f"[ERROR] speclo is NULL for element index {self.elemIndex} ({self.elemName})")
                 return
 
@@ -1892,40 +1892,39 @@ class Ui(QtWidgets.QMainWindow):
                 return
 
             self.element_array = np.zeros((self.spectral.spcalib.nwavelengths,4))
-            print("haiii")
             
-            speclo_ptr = self.spectral.elemdata.els[self.elemIndex].speclo
-            if not speclo_ptr:
-                print(f"[ERROR] speclo pointer is NULL for element index {self.elemIndex}")
-                return
-            try:
-                test_value = speclo_ptr[0]
-                print(f"[DEBUG] speclo[0] = {test_value}")
-            except Exception as e:
-                print(f"[ERROR] Failed to access speclo[0]: {e}")
-                return
-            for i in range(self.spectral.spcalib.nwavelengths):
-                try:
-                    self.element_array[i][0] = self.spectral.spcalib.wavelength_nm[i]
-                    self.element_array[i][1] = speclo_ptr[i]
-                    self.element_array[i][2] = self.spectral.elemdata.els[self.elemIndex].spechi[i]
-                    self.element_array[i][3] = self.element_array[i][1] + self.element_array[i][2]
-                except Exception as e:
-                    print(f"[CRASH] Failed at index {i}: {e}")
-                    break
+            # speclo_ptr = self.spectral.elemdata.els[self.elemIndex].speclo
+            # if not speclo_ptr:
+            #     print(f"[ERROR] speclo pointer is NULL for element index {self.elemIndex}")
+            #     return
+            # try:
+            #     test_value = speclo_ptr[0]
+            #     print(f"[DEBUG] speclo[0] = {test_value}")
+            # except Exception as e:
+            #     print(f"[ERROR] Failed to access speclo[0]: {e}")
+            #     return
+            # for i in range(self.spectral.spcalib.nwavelengths):
+            #     try:
+            #         self.element_array[i][0] = self.spectral.spcalib.wavelength_nm[i]
+            #         self.element_array[i][1] = speclo_ptr[i]
+            #         self.element_array[i][2] = self.spectral.elemdata.els[self.elemIndex].spechi[i]
+            #         self.element_array[i][3] = self.element_array[i][1] + self.element_array[i][2]
+            #     except Exception as e:
+            #         print(f"[CRASH] Failed at index {i}: {e}")
+            #         break
 
             
-            for i in range(self.spectral.spcalib.nwavelengths):
-                print('1')
-                self.element_array[i][0] = self.spectral.spcalib.wavelength_nm[i]
-                print('1')
-                self.element_array[i][1] = self.spectral.elemdata.els[self.elemIndex].speclo[i]
-                print('1')
-                self.element_array[i][2] = self.spectral.elemdata.els[self.elemIndex].spechi[i]
-                print('1')
-                self.element_array[i][3] = self.element_array[i][1] + self.element_array[i][2]
-                print('1')
-                
+            # for i in range(self.spectral.spcalib.nwavelengths):
+            #     print('1')
+            #     self.element_array[i][0] = self.spectral.spcalib.wavelength_nm[i]
+            #     print('1')
+            #     self.element_array[i][1] = self.spectral.elemdata.els[self.elemIndex].speclo[i]
+            #     print('1')
+            #     self.element_array[i][2] = self.spectral.elemdata.els[self.elemIndex].spechi[i]
+            #     print('1')
+            #     self.element_array[i][3] = self.element_array[i][1] + self.element_array[i][2]
+            #     print('1')
+
 
 
         self.element_array[:,1] = self.element_array[:,1] * 10**self.Scale_rollbox.value()
@@ -2275,14 +2274,14 @@ class Ui(QtWidgets.QMainWindow):
                                     vel.append(0)
                             
                         self.meteor_height = np.average(height)
-                        self.meteor_speed = np.average(vel[1:int(len(vel)/2)])
+                        self.meteor_speed = np.average(vel[1:len(vel)//2])
                         
 
                         ### Now, use the event_name to open the vid file. Will need to decompress bz2, first
                         with bz2.open('/srv/meteor/klingon/events/' + self.event_date + '/ev_' + event_name + '_02I.vid.bz2') as f:
                             spectral_vid = f.read()
 
-                        spectral_file_name = '/tmp/ev_%s_02I.vid' % event_name
+                        spectral_file_name = f'/tmp/ev_{event_name}_02I.vid'
                         with open(spectral_file_name, 'wb') as f:
                             f.write(spectral_vid)
                             print('Spectral file written to /tmp ...')
@@ -2291,7 +2290,7 @@ class Ui(QtWidgets.QMainWindow):
                             direct_vid = f.read()
                             # print(type(test_vid))
 
-                        direct_file_name = '/tmp/ev_%s_02J.vid' % event_name
+                        direct_file_name = f'/tmp/ev_{event_name}_02J.vid'
                         with open(direct_file_name, 'wb') as f:
                             f.write(direct_vid)
                             print('Direct file written to /tmp ...')
@@ -2349,7 +2348,7 @@ class Ui(QtWidgets.QMainWindow):
 
     # For loadin spectral vid files
     def uploadSpectralVid(self, file=None):
-        if file == False:
+        if not file:
             dlg = QFileDialog()
             dlg.setFileMode(QFileDialog.AnyFile)
 
@@ -2419,7 +2418,7 @@ class Ui(QtWidgets.QMainWindow):
 
     # For loading png files (zja)
     def uploadSpectralPNG(self, file=None):
-        if file == False:
+        if not file:
             dlg = QFileDialog()
             dlg.setFileMode(QFileDialog.AnyFile)
 
@@ -2603,7 +2602,7 @@ class Ui(QtWidgets.QMainWindow):
                 print(flat_file_name[0])
                
                 # Load the flat image
-                flat_img = loadImage(flat_file_name[0], -1)
+                flat_img = loadImage(os.path.split(flat_file_name[0])[0], os.path.split(flat_file_name[0])[1])
 
                 # # Change the file type if given
                 # if dtype is not None:
@@ -3549,46 +3548,6 @@ class Ui(QtWidgets.QMainWindow):
     def clearSpec(self):
         self.PlottedSpectrumNumber = 0
         self.Plot.clear()
-
-    def saveData(self):
-        print('Saving data...')
-        #
-        #measure = []
-        #fitted = []
-        #for w in range(len(self.spectrumY_resp)):
-        #    measure.append(self.spectral.spectra.meas_spectrum[w])
-        #    print(self.spectrumY_resp[w], self.spectral.spectra.meas_spectrum[w] ,self.spectral.spectra.fit_spectrum[w])
-        #    fitted.append(self.spectral.spectra.fit_spectrum[w])
-
-        #plt.plot(measure,color = 'orange')
-        #plt.plot(fitted,color = 'green')
-        #plt.plot(self.spectrumY_resp,color = 'blue')
-        #plt.show()
-        #spectral_library.GuralSpectral.writeFullSpectrum2(self, os.path.join(self.SavePath_edit.text(),'test.txt'))
-        with open(os.path.join(self.SavePath_edit.text(),self.event_date+"_"+self.event_time+'.txt'), 'w') as f:
-        #wavelength index, the wavelength, and the intensity
-        #Basically go see what the two variables are
-			### Write file header
-			#date, time, element
-			# file_id / name
-			# 
-		    #for w in range(self.spcalib.nwavelengths):
-			#	f.write('%f %f %f\n' % (w, self.spcalib.wavelength_nm[w], self.spectra.fit_spectrum[w]))
-            #if self.event_date != None and self.event_time != None: 
-            #    f.write("Event Date:{date} Event Time: {time}\n".format(date = self.event_date, time = self.event_time[:-1]))
-            #    f.write("Average Height(unit??):%f Average Velocity: %f\n" % (self.meteor_height, self.meteor_speed))
-            #else: 
-            #    f.write("------------------------------------------\n")
-            #    f.write("------------------------------------------\n")
-            #f.write("------------------------------------------\n")
-            #f.write("------------------------------------------\n")
-            #f.write("Wavelength Intensity Corrected Intensity\n")
-            for w in range(len(self.spectrumX)):
-                f.write('%f %f\n' % (self.spectrumX[w], self.spectrumY[w]))
-        
-        print("Data Saved!")
-
-
     def savePlot(self):
 
         print('Saving plots in %s' % self.SavePath_edit.text())
@@ -4212,7 +4171,7 @@ class Ui(QtWidgets.QMainWindow):
         # Validate fe_ranges
         if not isinstance(fe_ranges, list) or not all(isinstance(r, tuple) and len(r) == 2 for r in fe_ranges):
             print(f"Invalid fe_ranges argument: {fe_ranges}. Expected a list of tuples.")
-            return None, [], 0.0
+            return [], {}, [], 0.0, [], 0.0
 
         try:
             wavelengths = np.array(self.spectrumX)
@@ -4287,7 +4246,7 @@ class Ui(QtWidgets.QMainWindow):
         
         except Exception as e:
             print(f"Error calculating average Fe intensity: {e}")
-            return None, [], 0.0
+            return [], {}, [], 0.0, [], 0.0
 
 
     #Keep this function for continuum subtraction
@@ -4500,6 +4459,10 @@ class Ui(QtWidgets.QMainWindow):
         """
         Displaying the linear models for continuum subtraction around Mg (518nm) and Na (589nm).
         """
+        if not hasattr(self, 'spectrumX'):
+            print("Notice: Cannot show continuum model because spectrum data hasn't been loaded/plotted yet. Please plot a spectrum first.")
+            return
+
         try:
             # Define wavelength ranges for continuum subtraction
             mg_continuum_left = (485, 514)  # Left continuum range for Mg

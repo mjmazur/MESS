@@ -26,25 +26,6 @@
    <string>Meteor Elemental Spectral Software</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="PlotWidget" name="Plot">
-    <property name="geometry">
-     <rect>
-      <x>11</x>
-      <y>11</y>
-      <width>1411</width>
-      <height>276</height>
-     </rect>
-    </property>
-    <property name="sizePolicy">
-     <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-      <horstretch>0</horstretch>
-      <verstretch>0</verstretch>
-     </sizepolicy>
-    </property>
-    <property name="mouseTracking">
-     <bool>true</bool>
-    </property>
-   </widget>
    <widget class="QGroupBox" name="groupBox">
     <property name="geometry">
      <rect>
@@ -320,7 +301,7 @@
         <x>10</x>
         <y>10</y>
         <width>681</width>
-        <height>559</height>
+        <height>600</height>
        </rect>
       </property>
       <layout class="QGridLayout" name="gridLayout">
@@ -1190,7 +1171,7 @@
            </property>
            <property name="font">
             <font>
-             <weight>75</weight>
+             <weight>50</weight>
              <bold>false</bold>
             </font>
            </property>
@@ -1464,27 +1445,27 @@
            </property>
           </widget>
          </item>
-        <item>
-         <widget class="QPushButton" name="AverageFe_button">
-          <property name="text">
-           <string>Average Iron Intensity</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-        <widget class="QPushButton" name="ContinuumModel_button">
-         <property name="text">
-          <string>Show Continuum Model</string>
-         </property>
-        </widget>
-       </item>
-        <item>
-         <widget class="QPushButton" name="ContinuumSubtract_button">
-          <property name="text">
-           <string>Subtract Continuum</string>
-          </property>
-         </widget>
-        </item>
+         <item>
+          <widget class="QPushButton" name="AverageFe_button">
+           <property name="text">
+            <string>Average Iron Intensity</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="ContinuumModel_button">
+           <property name="text">
+            <string>Show Continuum Model</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="ContinuumSubtract_button">
+           <property name="text">
+            <string>Subtract Continuum</string>
+           </property>
+          </widget>
+         </item>
          <item>
           <spacer name="verticalSpacer_2">
            <property name="orientation">
@@ -2835,7 +2816,7 @@
        <rect>
         <x>10</x>
         <y>15</y>
-        <width>679</width>
+        <width>697</width>
         <height>541</height>
        </rect>
       </property>
@@ -2880,7 +2861,7 @@
            </property>
           </widget>
          </item>
-        <item>
+         <item>
           <widget class="QCheckBox" name="ShowContinuumModel_check">
            <property name="text">
             <string>Show Continuum Models</string>
@@ -2977,13 +2958,13 @@
        </item>
        <item>
         <layout class="QHBoxLayout" name="AppendCSV_layout">
-          <item>
-           <widget class="QCheckBox" name="AppendToCSV_check">
-            <property name="text">
-             <string>Append to CSV</string>
-            </property>
-           </widget>
-          </item>
+         <item>
+          <widget class="QCheckBox" name="AppendToCSV_check">
+           <property name="text">
+            <string>Append to CSV</string>
+           </property>
+          </widget>
+         </item>
         </layout>
        </item>
        <item>
@@ -3086,67 +3067,67 @@
        </rect>
       </property>
       <layout class="QGridLayout" name="gridLayout_4">
-        <item row="0" column="0" colspan="2">
-         <widget class="QLabel" name="label_ManualContinuum">
-          <property name="font">
-           <font>
-            <weight>75</weight>
-            <italic>true</italic>
-            <bold>true</bold>
-           </font>
-          </property>
-          <property name="text">
-            <string>- Manual Background Regions -</string>
-          </property>
-          <property name="alignment">
-            <set>Qt::AlignCenter</set>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <layout class="QHBoxLayout" name="horizontalLayout_ManualContinuumMgL">
-          <item>
-           <widget class="QLabel" name="label_MgLeft1">
-            <property name="text">
-             <string>Mg Left 1</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QDoubleSpinBox" name="MgLeft_spin1">
-            <property name="minimum">
-             <double>400.0</double>
-            </property>
-            <property name="maximum">
-             <double>700.0</double>
-            </property>
-            <property name="value">
-             <double>485.0</double>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="label_MgRight1">
-            <property name="text">
-             <string>Mg Right 1</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QDoubleSpinBox" name="MgRight_spin1">
-            <property name="minimum">
-             <double>400.0</double>
-            </property>
-            <property name="maximum">
-             <double>700.0</double>
-            </property>
-            <property name="value">
-             <double>515.0</double>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
+       <item row="0" column="0" colspan="2">
+        <widget class="QLabel" name="label_ManualContinuum">
+         <property name="font">
+          <font>
+           <weight>75</weight>
+           <italic>true</italic>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>- Manual Background Regions -</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_ManualContinuumMgL">
+         <item>
+          <widget class="QLabel" name="label_MgLeft1">
+           <property name="text">
+            <string>Mg Left 1</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QDoubleSpinBox" name="MgLeft_spin1">
+           <property name="minimum">
+            <double>400.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>700.000000000000000</double>
+           </property>
+           <property name="value">
+            <double>485.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_MgRight1">
+           <property name="text">
+            <string>Mg Right 1</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QDoubleSpinBox" name="MgRight_spin1">
+           <property name="minimum">
+            <double>400.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>700.000000000000000</double>
+           </property>
+           <property name="value">
+            <double>515.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
        <item row="1" column="1">
         <layout class="QHBoxLayout" name="horizontalLayout_ManualContinuumMgR">
          <item>
@@ -3159,13 +3140,13 @@
          <item>
           <widget class="QDoubleSpinBox" name="MgLeft_spin2">
            <property name="minimum">
-            <double>400.0</double>
+            <double>400.000000000000000</double>
            </property>
            <property name="maximum">
-            <double>700.0</double>
+            <double>700.000000000000000</double>
            </property>
            <property name="value">
-            <double>520.0</double>
+            <double>520.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -3179,62 +3160,62 @@
          <item>
           <widget class="QDoubleSpinBox" name="MgRight_spin2">
            <property name="minimum">
-            <double>400.0</double>
+            <double>400.000000000000000</double>
            </property>
            <property name="maximum">
-            <double>700.0</double>
+            <double>700.000000000000000</double>
            </property>
            <property name="value">
-            <double>550.0</double>
+            <double>550.000000000000000</double>
            </property>
           </widget>
          </item>
         </layout>
        </item>
        <item row="2" column="0">
-         <layout class="QHBoxLayout" name="horizontalLayout_ManualContinuumNaL">
-          <item>
-           <widget class="QLabel" name="label_NaLeft1">
-            <property name="text">
-             <string>Na Left 1</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QDoubleSpinBox" name="NaLeft_spin1">
-            <property name="minimum">
-             <double>400.0</double>
-            </property>
-            <property name="maximum">
-             <double>700.0</double>
-            </property>
-            <property name="value">
-             <double>575.0</double>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="label_NaRight1">
-            <property name="text">
-             <string>Na Right 1</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QDoubleSpinBox" name="NaRight_spin1">
-            <property name="minimum">
-             <double>400.0</double>
-            </property>
-            <property name="maximum">
-             <double>700.0</double>
-            </property>
-            <property name="value">
-             <double>585.0</double>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
+        <layout class="QHBoxLayout" name="horizontalLayout_ManualContinuumNaL">
+         <item>
+          <widget class="QLabel" name="label_NaLeft1">
+           <property name="text">
+            <string>Na Left 1</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QDoubleSpinBox" name="NaLeft_spin1">
+           <property name="minimum">
+            <double>400.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>700.000000000000000</double>
+           </property>
+           <property name="value">
+            <double>575.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_NaRight1">
+           <property name="text">
+            <string>Na Right 1</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QDoubleSpinBox" name="NaRight_spin1">
+           <property name="minimum">
+            <double>400.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>700.000000000000000</double>
+           </property>
+           <property name="value">
+            <double>585.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
        <item row="2" column="1">
         <layout class="QHBoxLayout" name="horizontalLayout_ManualContinuumNaR">
          <item>
@@ -3247,13 +3228,13 @@
          <item>
           <widget class="QDoubleSpinBox" name="NaLeft_spin2">
            <property name="minimum">
-            <double>400.0</double>
+            <double>400.000000000000000</double>
            </property>
            <property name="maximum">
-            <double>700.0</double>
+            <double>700.000000000000000</double>
            </property>
            <property name="value">
-            <double>593.0</double>
+            <double>593.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -3267,13 +3248,13 @@
          <item>
           <widget class="QDoubleSpinBox" name="NaRight_spin2">
            <property name="minimum">
-            <double>400.0</double>
+            <double>400.000000000000000</double>
            </property>
            <property name="maximum">
-            <double>700.0</double>
+            <double>700.000000000000000</double>
            </property>
            <property name="value">
-            <double>608.0</double>
+            <double>608.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -3286,29 +3267,29 @@
          </property>
          <property name="sizeHint" stdset="0">
           <size>
-            <width>20</width>
-            <height>60</height> <!-- Increase height for more space -->
+           <width>20</width>
+           <height>60</height>
           </size>
          </property>
         </spacer>
        </item>
        <item row="4" column="0" colspan="2">
-         <widget class="QLabel" name="label_ContinuumSubtractButtons">
-          <property name="font">
-           <font>
-            <weight>75</weight>
-            <italic>true</italic>
-            <bold>true</bold>
-           </font>
-          </property>
-          <property name="text">
-            <string>- Subtract Background -</string>
-          </property>
-          <property name="alignment">
-            <set>Qt::AlignCenter</set>
-          </property>
-         </widget>
-        </item>
+        <widget class="QLabel" name="label_ContinuumSubtractButtons">
+         <property name="font">
+          <font>
+           <weight>75</weight>
+           <italic>true</italic>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>- Subtract Background -</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
        <item row="5" column="0" colspan="2">
         <layout class="QHBoxLayout" name="horizontalLayout_55">
          <item>
@@ -3328,13 +3309,13 @@
         </layout>
        </item>
        <item row="6" column="0">
-         <widget class="QPushButton" name="ContinuumSubtract_button_bg">
-          <property name="text">
-           <string>Subtract Continuum</string>
-          </property>
-         </widget>
-        </item>
-        <item row="6" column="1">
+        <widget class="QPushButton" name="ContinuumSubtract_button_bg">
+         <property name="text">
+          <string>Subtract Continuum</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
         <widget class="QPushButton" name="SaveSubtractionInfo_button_bg">
          <property name="text">
           <string>Save Continuum Subtraction Info</string>
@@ -3343,13 +3324,13 @@
        </item>
        <item row="7" column="0" colspan="2">
         <layout class="QHBoxLayout" name="AppendCSV_layout">
-          <item>
-           <widget class="QCheckBox" name="AppendtoCSV_check">
-            <property name="text">
-             <string>Append to CSV</string>
-            </property>
-           </widget>
-          </item>
+         <item>
+          <widget class="QCheckBox" name="AppendtoCSV_check">
+           <property name="text">
+            <string>Append to CSV</string>
+           </property>
+          </widget>
+         </item>
         </layout>
        </item>
        <item row="7" column="0" colspan="2">
@@ -3359,8 +3340,8 @@
          </property>
          <property name="sizeHint" stdset="0">
           <size>
-            <width>20</width>
-            <height>60</height> <!-- Increase height for more space -->
+           <width>20</width>
+           <height>60</height>
           </size>
          </property>
         </spacer>
@@ -3369,16 +3350,48 @@
      </widget>
     </widget>
    </widget>
-   <widget class="QWidget" name="gridLayoutWidget_4">
+   <widget class="QGroupBox" name="groupBox_2">
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>290</y>
+      <y>0</y>
       <width>1411</width>
-      <height>36</height>
+      <height>331</height>
      </rect>
     </property>
-    <layout class="QGridLayout" name="SpectralROI_layout"/>
+    <property name="title">
+     <string/>
+    </property>
+    <widget class="QWidget" name="gridLayoutWidget_4">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>290</y>
+       <width>1411</width>
+       <height>36</height>
+      </rect>
+     </property>
+     <layout class="QGridLayout" name="SpectralROI_layout"/>
+    </widget>
+    <widget class="PlotWidget" name="Plot">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>10</y>
+       <width>1411</width>
+       <height>276</height>
+      </rect>
+     </property>
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="mouseTracking">
+      <bool>true</bool>
+     </property>
+    </widget>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -3387,7 +3400,7 @@
      <x>0</x>
      <y>0</y>
      <width>1438</width>
-     <height>20</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
