@@ -1,44 +1,80 @@
-# MESS
- The **M**eteor **E**lemental **S**pectra **S**oftware is a package based on the CAMO-S code for reducing meteor spectra from a static camera.
- 
- # Installation
- To successfully run the software, Python and QT are required along with the following Python modules...
- - Cython
- - Numpy
- - Matplotlib
- - pyqtgraph
- - scipy
- - imageio
- - sklearn
+# MESS (Meteor Elemental Spectral Software)
 
-It is also necessary to have the WMPL and RMS installed. If you find that you have trouble importing some of the modules from RMS (BinImageCy, for example), you can create soft links from the MESS.py directory to the appropriate files (BinImageCy.py and BinImageCy.pyx, in my case). 
+**MESS** is an advanced, PyQt-based scientific analysis package designed to extract, reduce, and model meteor spectra from static camera observations and video workflows. Initially based on the CAMO-S code, MESS provides a rich Graphical User Interface to process high-speed `.vid.bz2` streams, calibrate wavelengths, model elemental abundance against various thermal profiles, and fit spectral emissions against deep meteor composition libraries.
 
- Installation in a virtualenv or a Conda environment is recommended.
- 
- Build and install SpectralTest.so
- cd into spectral_library and type 'make' and then 'make install'
- 
- **Input data types:** VID files, ev* txt files, PNG images<br>
- **Output data types:** CSV and PNG images
+---
 
- # Quick Install
- - Install virtualenv or Anaconda3 (ex. conda create -n mess python=3.8)
- - Create an environment with Python=3.8 and activate it (ex. conda activate mess)
- - Go to https://github.com/wmpg/WesternMeteorPyLib and follow the instructions to install it to the environment that you're currently working in
- - Install some more packages...
-  - conda install -y -c conda-forge pyqtgraph
-  - conda install -y -c conda-forge imageio
-  - conda install -y -c conda-forge scikit-learn
- - Go to https://github.com/CroatianMeteorNetwork/RMS and follow the instructions to install it to the environment that you're currently working in
- 
- 
-# Using MESS
-Under the 'Setup' tab...<br>
-Step 1: Click on 'Load Spectral Vid' button to select a VID file for viewing.<br>
-Step 2: The display should show a frame with a spectrum in it. If not, cycle through the frames with the left/right arrow buttons above the image display.<br>
-Step 3: Click on 'Auto Flat' to automatically flatten the image.<br>
-Step 4: If you see a zeroth-order image, you can try to auto-pick it with the 'Autopick 0th Order' button. If not, no problem.<br>
-Step 5: Click on the 'Autopick ROI' button. If you're not happy with the area of interest, click it again.<br>
-Step 6: Create a transform by clicking on a bright spectral feature and setting the lambda_0 to the correct value. Hint: Mg (518 nm) and Na (589 nm) are commonly visible.<br>
-Step 7: Click 'Show Spectrum' button. You should see a spectrum appear within a few seconds.<br>
-Under the 'Fitting' tab...<br>
+## Features & Capabilities
+
+- **Native `.bz2` Event Ingestion:** Seamlessly parses `ev_...txt` metadata and unpacks heavily compressed `02I` and `02J` video archives using direct stream extraction without memory-bottlenecking.
+- **Automated Flattening & Bounding Regions:** Cycle through video frames to perform auto-flat transformations, background bias rejection, and auto-picking of zeroth-order optical images and ROIs (Regions of Interest).
+- **Stellar & Synthetic Calibrations:** Calibrate instruments against cataloged stellar spectrum references, scaling pixel intensity against absolute nm wavelengths.
+- **Warm & Hot Plasma Modeling:** Integrate the Gural Spectral Library natively via Cython (`SpectralTest.so`) to model thermodynamic spectra (e.g., matching column densities, electron distribution, and hot-to-warm plasma ratios). 
+- **Multi-Element Decomposition Unpacking:** Overlay and curve-fit precise transitions for elements spanning the periodic table (Fe, Mg, Na, Ni, etc.) concurrently.
+
+---
+
+## Requirements & Dependencies
+
+To successfully compile and run the software, Python 3.8+ and PyQt5 are required alongside the following critical domain libraries:
+
+- **Core Computation & UI:** `numpy`, `scipy`, `scikit-learn`, `matplotlib`, `pyqtgraph`, `imageio`
+- **Bindings:** `Cython` (required to compile the native spectral math core)
+- **External Astronomical Frameworks:**
+  - **WMPL** (Western Meteor PyLib)
+  - **RMS** (Global Meteor Network / CroatianMeteorNetwork)
+
+> **Note:** If you experience import path issues resolving RMS binaries (like `BinImageCy`), you may need to explicitly soft-link the compiled `.pyx`/`.so` paths natively into the MESS working directory.
+
+---
+
+## Quick Installation Guide
+
+Installation in an isolated `virtualenv` or `Conda` environment is highly recommended to protect dependency graphs.
+
+**1. Create and Activate the Environment**
+```bash
+conda create -n mess python=3.8
+conda activate mess
+```
+
+**2. Install Core GUI & Math Modules**
+```bash
+conda install -y -c conda-forge pyqtgraph imageio scikit-learn
+```
+
+**3. Install Meteor Research Tooling**
+Follow the installation manuals natively to hook into your environment for:
+- [WMPL (Western Meteor PyLib)](https://github.com/wmpg/WesternMeteorPyLib)
+- [RMS (Croatian Meteor Network)](https://github.com/CroatianMeteorNetwork/RMS)
+
+**4. Build the C/Cython Spectral Core**
+```bash
+cd spectral_library
+make
+make install
+```
+
+---
+
+## Workflow & Usage Guide
+
+Launch the main UI interface via:
+```bash
+python MESS.py
+```
+
+### The `Setup` Tab
+1. **Load Event Stream:** Click **Load Event/Spectral Vid** to select a standard `ev...txt` configuration or a direct `VID/BZ2` media stream. 
+2. **Scan Frames:** The preview should render a bounded spectrum. Use the left/right arrow timeline keys above the render window to scan for peak emission frames.
+3. **Geometry & Transformations:** Apply **Auto Flat** to flatten intensity, adjust bias limits via rollboxes, and automatically hunt bounds using **Autopick 0th Order** / **Autopick ROI**. 
+4. **Wavelength Calibration:** Anchor a known elemental transition in the viewer by picking a bright spectral node (Often Mg @ 518 nm or Na @ 589 nm) and aligning it using the local $\lambda_0$ transform inputs.
+5. **View Target:** Click **Show Spectrum** to convert the localized frame bounds into a 1D pixel/intensity curve map.
+
+### The `Fitting` Tab
+*Proceed to the fitting layer to begin isolating column densities, overlaying thermal variants, fitting Fe/Mg/Na peaks, determining baseline continuum noise boundaries, and generating statistical output graphs.*
+
+---
+
+**Input data types:** `*.vid`, `*.bz2`, `ev*.txt`, `*.png`  
+**Output data types:** `*.csv`, `*.txt`, `*.png`
