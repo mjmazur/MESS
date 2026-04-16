@@ -4961,39 +4961,114 @@ class Ui(QtWidgets.QMainWindow):
         Reads a CSV file and displays a ternary plot of Fe, Mg, Na normalized intensities.
         """
         import pandas as pd
-        import plotly.express as px
-        import plotly.io as pio # Forces the plot to open in a browser
+        import ternary
+        import matplotlib.pyplot as plt
+        import os
 
-        pio.renderers.default = "browser"
+        # Initialize python-ternary plotting engine
+        fig, tax = ternary.figure(scale=1.0)
+        fig.set_size_inches(12, 8)
+        
+        # Overlay Boundary constraints and Matrix Gridlines
+        tax.boundary(linewidth=2.0)
+        # tax.gridlines(color="blue", multiple=0.1)
+        tax.gridlines(color="black", multiple=0.1)
+        tax.gridlines(color="blue", multiple=0.02, linewidth=0.5)
+        
+        # Set Structural Axis labels and GUI Title
+        #tax.set_title("Normalized Intensities of Two Station CAMO-Spectral Meteor Events\n", fontsize=14)
+        tax.bottom_axis_label("Na", fontsize=15) #, offset=0.08)
+        tax.right_axis_label("Fe", fontsize=15) #, offset=0.14)
+        tax.left_axis_label("Mg", fontsize=15) #, offset=0.14)
+
+        # Plot background Vojacek data
+        background_file = os.path.join(os.path.dirname(__file__), 'VojacekRepCat.tsv')
+        if not os.path.exists(background_file):
+            background_file = 'VojacekRepCat.tsv'
+
+        if os.path.exists(background_file):
+            try:
+                # Parse the TSV manually to handle the comments and structure
+                with open(background_file, 'r') as f:
+                    lines = f.readlines()
+                
+                # Colors map
+                color_map = {
+                    'Normal': 'red',
+                    'Na-poor': 'green',
+                    'Fe-poor': 'blue',
+                    'Na-enhanced': 'magenta',
+                    'Na-rich': 'cyan',
+                    'Na-free': 'yellow',
+                    'Iron': 'black'
+                }
+                
+                bg_points = {k: [] for k in color_map.keys()}
+                
+                start_parsing = False
+                for line in lines:
+                    if line.startswith('SX001'):
+                        start_parsing = True
+                    
+                    if start_parsing:
+                        cols = line.split('|')
+                        if len(cols) >= 23:
+                            sp_class = cols[10].strip()
+                            try:
+                                mg = float(cols[20])
+                                na = float(cols[21])
+                                fe = float(cols[22])
+                                total = mg + na + fe
+                                if total > 0:
+                                    n_mg = mg / total
+                                    n_na = na / total
+                                    n_fe = fe / total
+                                    # Tax scatter takes (bottom_right/i, top/j, bottom_left/k) -> (Na, Fe, Mg)
+                                    if sp_class in bg_points:
+                                        bg_points[sp_class].append((n_na, n_fe, n_mg))
+                            except ValueError:
+                                pass
+                
+                # Plot background points
+                for sp_class, points in bg_points.items():
+                    if points:
+                        tax.scatter(points, marker='.', color=color_map[sp_class], label=f"Vojacek {sp_class}", alpha=0.75, s=200)
+            except Exception as e:
+                print(f"Error parsing background file: {e}")
 
         # Prompt user to select the CSV/TXT file
         file_dialog = QFileDialog()
         file_dialog.setFileMode(QFileDialog.AnyFile)
+        file_path = None
         if file_dialog.exec():
             file_path = file_dialog.selectedFiles()[0]
         else:
-            print("No file selected for ternary plot.")
-            return
+            print("No file selected for ternary plot. Showing background data only.")
 
-        # Read the file
-        try:
-            df = pd.read_csv(file_path)
-        except Exception as e:
-            print(f"Error reading file: {e}")
-            return
+        if file_path:
+            # Read the user file
+            try:
+                df = pd.read_csv(file_path)
+                
+                # Formally check for the required elemental columns
+                if all(col in df.columns for col in ['Fe', 'Mg', 'Na']):
+                    # Generate tuple array for scatter mapping
+                    elemental_points = df[['Na', 'Fe', 'Mg']].values.tolist()
+                    
+                    # Map values to the plot with distinct foreground stylings
+                    tax.scatter(elemental_points, marker='*', color='black', label="User Record", s=65)
+                else:
+                    print(f"Error: Missing required compositional elements 'Fe', 'Mg', or 'Na' in {file_path}")
+            except Exception as e:
+                print(f"Error reading file: {e}")
 
-        # Plot the ternary diagram
-        fig = px.scatter_ternary(
-            df,
-            a="Fe",
-            b="Mg",
-            c="Na",
-            hover_data=["Date/Time"] if "Date/Time" in df.columns else None,
-            color_discrete_sequence=['magenta'],
-            size_max=10
-        )
-        fig.update_layout(title="Normalized Intensities of Two Station CAMO-Spectral Meteor Events")
-        fig.show()
+        tax.ticks(axis='lbr', linewidth=1, multiple=0.2, tick_formats="%.1f")
+        tax.legend(loc='upper right', bbox_to_anchor=(1.25, 1.0))
+        tax.clear_matplotlib_ticks()
+        
+        # Display the formatted plot interactively
+        plt.tight_layout()
+        tax.show()
 
 ###############################################################################################
 ################################ /// OPEN THE APPLICATION /// #################################
