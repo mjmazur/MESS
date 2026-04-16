@@ -5062,9 +5062,10 @@ class Ui(QtWidgets.QMainWindow):
             except Exception as e:
                 print(f"Error reading file: {e}")
 
-        tax.ticks(axis='lbr', linewidth=1, multiple=0.2, tick_formats="%.1f")
+        tax.ticks(axis='lbr', linewidth=1, multiple=0.2, tick_formats="%.1f", fontsize=14)
         tax.legend(loc='upper right', bbox_to_anchor=(1.25, 1.0))
         tax.clear_matplotlib_ticks()
+        tax.get_axes().axis('off')
         
         # Display the formatted plot interactively
         plt.tight_layout()
