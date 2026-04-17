@@ -1031,6 +1031,7 @@ class Ui(QtWidgets.QMainWindow):
         # self.meteor_range_km = math.sqrt( Rsin * Rsin + 2.0 * self.earth_radius_km * self.meteor_height_km + self.meteor_height_km * self.meteor_height_km) - Rsin
         self.event_date = None
         self.event_time = None
+        self.current_vid_filename = ""
         self.meteor_speed = None
         self.meteor_height = None
 
@@ -1104,6 +1105,9 @@ class Ui(QtWidgets.QMainWindow):
         self.dir_y = 0
         print('***********************************************')
         print(self.dir_x)
+
+        # Set up the normalization results table in the Ternary Plots section
+        self._setup_normalization_table()
 
     ###############################################################################################
     ###################################### /// FUNCTIONS /// ######################################
@@ -2387,6 +2391,7 @@ class Ui(QtWidgets.QMainWindow):
                 spectral_file_name = dlg.selectedFiles()
 
                 base_name = os.path.basename(spectral_file_name[0])
+                self.current_vid_filename = base_name
                 parts = base_name.split('_')
                 self.event_date = parts[1] if len(parts) > 0 else ""
                 self.event_time = parts[2] if len(parts) > 1 else ""
@@ -2420,6 +2425,7 @@ class Ui(QtWidgets.QMainWindow):
             spectral_file_name = file
 
             base_name = os.path.basename(spectral_file_name)
+            self.current_vid_filename = base_name
             parts = base_name.split('_')
             self.event_date = parts[1] if len(parts) > 0 else ""
             self.event_time = parts[2] if len(parts) > 1 else ""
@@ -4467,16 +4473,19 @@ class Ui(QtWidgets.QMainWindow):
 
             norm_intensities = {}
 
-            norm_intensities['Fe'] = round(top_n_average / intensity_sum_3, 6) if intensity_sum_3 != 0 else 0.0
+            norm_intensities['Fe'] = max(0.0, round(top_n_average / intensity_sum_3, 6)) if intensity_sum_3 != 0 else 0.0
 
             # norm_intensities['Fe'] = round(fe_average_value / intensity_sum, 6) if intensity_sum != 0 else 0.0
-            norm_intensities['Mg'] = round(intensity_dict['Mg_518nm'] / intensity_sum_3, 6) if intensity_sum_3 != 0 else 0.0
-            norm_intensities['Na'] = round(intensity_dict['Na_589nm'] / intensity_sum_3, 6) if intensity_sum_3 != 0 else 0.0
+            norm_intensities['Mg'] = max(0.0, round(intensity_dict['Mg_518nm'] / intensity_sum_3, 6)) if intensity_sum_3 != 0 else 0.0
+            norm_intensities['Na'] = max(0.0, round(intensity_dict['Na_589nm'] / intensity_sum_3, 6)) if intensity_sum_3 != 0 else 0.0
             
             #print(f"Normalized intensities: {norm_intensities}\n")
             print(F"Normalized intensities (using top n fe): {norm_intensities}")
             # Store the normalized intensities in the spectral object
             self.spectral.normalized_intensities = norm_intensities
+
+            # Update the normalization table in the UI
+            self.updateNormalizationTable()
 
             # At the end, instead of just printing, return the results:
             return intensity_dict, fe_average_value, norm_intensities
@@ -4891,6 +4900,77 @@ class Ui(QtWidgets.QMainWindow):
 
     
 # Functions for Ternary Plotting
+
+    def _setup_normalization_table(self):
+        """
+        Configure the NormalizationTable widget headers and internal state.
+        Called once from __init__.
+        """
+        try:
+            tbl = self.NormalizationTable
+            tbl.setColumnCount(5)
+            tbl.setHorizontalHeaderLabels(["Active", "File", "Fe", "Mg", "Na"])
+            # Stretch the File column; fixed widths for the value columns
+            header = tbl.horizontalHeader()
+            from PyQt5.QtWidgets import QHeaderView
+            header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+            header.setSectionResizeMode(1, QHeaderView.Stretch)
+            header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+            header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+            header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+            tbl.verticalHeader().setVisible(False)
+            # Internal map: vid filename -> row index
+            self._norm_table_rows = {}
+        except Exception as e:
+            print(f"Warning: could not set up NormalizationTable: {e}")
+
+    def updateNormalizationTable(self):
+        """
+        Add or update a row in NormalizationTable for the current vid file.
+        Called automatically at the end of subtractContinuum().
+        """
+        try:
+            from PyQt5.QtWidgets import QTableWidgetItem
+            from PyQt5.QtCore import Qt
+
+            norm = getattr(self.spectral, 'normalized_intensities', None)
+            if not norm or not all(k in norm for k in ['Fe', 'Mg', 'Na']):
+                return
+
+            # Determine the label for this row
+            vid_name = self.current_vid_filename if self.current_vid_filename else \
+                f"{self.event_date or ''}_{self.event_time or ''}"
+
+            tbl = self.NormalizationTable
+
+            if vid_name in self._norm_table_rows:
+                # Update existing row in place
+                row = self._norm_table_rows[vid_name]
+            else:
+                # Insert a new row
+                row = tbl.rowCount()
+                tbl.insertRow(row)
+                self._norm_table_rows[vid_name] = row
+
+                # Col 0: checkbox
+                chk_item = QTableWidgetItem()
+                chk_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
+                chk_item.setCheckState(Qt.Checked)
+                tbl.setItem(row, 0, chk_item)
+
+                # Col 1: filename (read-only)
+                name_item = QTableWidgetItem(vid_name)
+                name_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+                tbl.setItem(row, 1, name_item)
+
+            # Cols 2-4: update values (create items if they don't exist yet)
+            for col, key in enumerate(['Fe', 'Mg', 'Na'], start=2):
+                val_item = QTableWidgetItem(f"{norm[key]:.6f}")
+                val_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+                tbl.setItem(row, col, val_item)
+
+        except Exception as e:
+            print(f"Warning: could not update NormalizationTable: {e}")
     def appendNormalizationToCSV(self):
         """
         Appends Fe, Mg, Na normalized intensities and date/time to a chosen CSV file.
@@ -4999,7 +5079,7 @@ class Ui(QtWidgets.QMainWindow):
                     'Fe-poor': 'blue',
                     'Na-enhanced': 'magenta',
                     'Na-rich': 'cyan',
-                    'Na-free': 'yellow',
+                    'Na-free': 'orange',
                     'Iron': 'black'
                 }
                 
@@ -5063,6 +5143,38 @@ class Ui(QtWidgets.QMainWindow):
                 print(f"Error reading file: {e}")
 
         tax.ticks(axis='lbr', linewidth=1, multiple=0.2, tick_formats="%.1f", fontsize=14)
+
+        # ---- Plot points from the in-app NormalizationTable ----
+        try:
+            from PyQt5.QtCore import Qt
+            tbl = self.NormalizationTable
+            table_points = []
+            for row in range(tbl.rowCount()):
+                chk_item = tbl.item(row, 0)
+                # Only include rows where the Active checkbox is checked
+                if chk_item is None or chk_item.checkState() != Qt.Checked:
+                    continue
+                try:
+                    fe = float(tbl.item(row, 2).text())
+                    mg = float(tbl.item(row, 3).text())
+                    na = float(tbl.item(row, 4).text())
+                    total = fe + mg + na
+                    if total > 0:
+                        # Re-normalise so the three fractions always sum to 1
+                        n_fe = fe / total
+                        n_mg = mg / total
+                        n_na = na / total
+                        # ternary scatter expects (Na, Fe, Mg) order
+                        table_points.append((n_na, n_fe, n_mg))
+                except (AttributeError, ValueError, TypeError):
+                    pass
+            if table_points:
+                tax.scatter(table_points, marker='*', color='black',
+                            label="Session Results", zorder=5, s=200)
+        except Exception as e:
+            print(f"Warning: could not plot NormalizationTable points: {e}")
+        # ---- End NormalizationTable points ----
+
         tax.legend(loc='upper right', bbox_to_anchor=(1.25, 1.0))
         tax.clear_matplotlib_ticks()
         tax.get_axes().axis('off')
