@@ -5147,8 +5147,14 @@ class Ui(QtWidgets.QMainWindow):
         # ---- Plot points from the in-app NormalizationTable ----
         try:
             from PyQt5.QtCore import Qt
+            # Distinct face colours; cycles if there are more rows than colours
+            _point_colors = [
+                '#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4',
+                '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990',
+                '#dcbeff', '#9a6324', '#fffac8', '#800000', '#aaffc3',
+            ]
             tbl = self.NormalizationTable
-            table_points = []
+            color_idx = 0
             for row in range(tbl.rowCount()):
                 chk_item = tbl.item(row, 0)
                 # Only include rows where the Active checkbox is checked
@@ -5160,17 +5166,24 @@ class Ui(QtWidgets.QMainWindow):
                     na = float(tbl.item(row, 4).text())
                     total = fe + mg + na
                     if total > 0:
-                        # Re-normalise so the three fractions always sum to 1
                         n_fe = fe / total
                         n_mg = mg / total
                         n_na = na / total
+                        face_color = _point_colors[color_idx % len(_point_colors)]
+                        color_idx += 1
                         # ternary scatter expects (Na, Fe, Mg) order
-                        table_points.append((n_na, n_fe, n_mg))
+                        tax.scatter(
+                            [(n_na, n_fe, n_mg)],
+                            marker='*',
+                            color=face_color,
+                            edgecolors='black',
+                            linewidths=0.8,
+                            label=f"Session Results",
+                            zorder=5,
+                            s=300,
+                        )
                 except (AttributeError, ValueError, TypeError):
                     pass
-            if table_points:
-                tax.scatter(table_points, marker='*', color='black',
-                            label="Session Results", zorder=5, s=200)
         except Exception as e:
             print(f"Warning: could not plot NormalizationTable points: {e}")
         # ---- End NormalizationTable points ----
