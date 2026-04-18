@@ -5171,6 +5171,10 @@ class Ui(QtWidgets.QMainWindow):
                         n_na = na / total
                         face_color = _point_colors[color_idx % len(_point_colors)]
                         color_idx += 1
+                        # Label = filename without extension
+                        file_item = tbl.item(row, 1)
+                        raw_name = file_item.text() if file_item else ""
+                        point_label = os.path.splitext(raw_name)[0] if raw_name else f"Point {color_idx}"
                         # ternary scatter expects (Na, Fe, Mg) order
                         tax.scatter(
                             [(n_na, n_fe, n_mg)],
@@ -5178,7 +5182,7 @@ class Ui(QtWidgets.QMainWindow):
                             color=face_color,
                             edgecolors='black',
                             linewidths=0.8,
-                            label=f"Session Results",
+                            label=point_label,
                             zorder=5,
                             s=300,
                         )
