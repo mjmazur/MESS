@@ -2212,6 +2212,9 @@
           <layout class="QHBoxLayout" name="horizontalLayout_39">
            <item>
             <widget class="QPushButton" name="FeII_button">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="maximumSize">
               <size>
                <width>40</width>
@@ -2225,6 +2228,9 @@
            </item>
            <item>
             <widget class="QPushButton" name="MgII_button">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="maximumSize">
               <size>
                <width>40</width>
@@ -2268,6 +2274,9 @@
           <layout class="QHBoxLayout" name="horizontalLayout_44">
            <item>
             <widget class="QPushButton" name="CII_button">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="maximumSize">
               <size>
                <width>40</width>
@@ -2348,6 +2357,9 @@
            </item>
            <item>
             <widget class="QPushButton" name="O2_button">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="maximumSize">
               <size>
                <width>40</width>
@@ -2361,6 +2373,9 @@
            </item>
            <item>
             <widget class="QPushButton" name="CH_button">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="maximumSize">
               <size>
                <width>40</width>
@@ -2374,6 +2389,9 @@
            </item>
            <item>
             <widget class="QPushButton" name="CO2_button">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="maximumSize">
               <size>
                <width>40</width>
@@ -2428,6 +2446,9 @@
            </item>
            <item>
             <widget class="QPushButton" name="CaO_button">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="maximumSize">
               <size>
                <width>40</width>
@@ -2441,6 +2462,9 @@
            </item>
            <item>
             <widget class="QPushButton" name="AlO_button">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="maximumSize">
               <size>
                <width>40</width>
@@ -2454,6 +2478,9 @@
            </item>
            <item>
             <widget class="QPushButton" name="FeO_button">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="maximumSize">
               <size>
                <width>40</width>
