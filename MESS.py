@@ -1832,7 +1832,7 @@ class Ui(QtWidgets.QMainWindow):
                             clip_sigma=1.2,
                             fe_active=False,
                             fe_spike_half_width_nm=64.0,
-                            fe_blend_centre_nm=550.0,
+                            fe_blend_centre_nm=575.0,
                             fe_blend_width_nm=50.0):
         """Estimate the low-frequency continuum underneath narrow emission lines.
 
