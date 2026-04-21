@@ -1705,12 +1705,225 @@ class Ui(QtWidgets.QMainWindow):
                 self.element_array[i][2] = self.spectral.elemdata.els[self.elemIndex].spechi[i]
                 self.element_array[i][3] = self.element_array[i][1] + self.element_array[i][2]
 
-        self.element_array[:,1] = self.element_array[:,1] * 10**self.Scale_rollbox.value()
-        self.element_array[:,2] = self.element_array[:,2] * 10**self.Scale_rollbox.value()
-        self.element_array[:,3] = self.element_array[:,3] * 10**self.Scale_rollbox.value()
+        _base_scale = self.Scale_rollbox.value()
+        _skew = self.ScaleSkew_rollbox.value() if hasattr(self, 'ScaleSkew_rollbox') else 0.0
+        _wavelengths = self.element_array[:, 0]
+        _lambda_ref = _wavelengths[0] if len(_wavelengths) > 0 else 0.0
+        # Per-wavelength multiplier: 10^(base + skew*(λ - λ_ref))
+        # Positive skew → scale decreases with increasing λ; negative → increases.
+        _scale_vec = 10 ** (_base_scale + _skew * (_lambda_ref - _wavelengths))
+        self.element_array[:,1] = self.element_array[:,1] * _scale_vec
+        self.element_array[:,2] = self.element_array[:,2] * _scale_vec
+        self.element_array[:,3] = self.element_array[:,3] * _scale_vec
         print('Max values: %s %s %s' % (np.max(self.element_array[:,1]), np.max(self.element_array[:,2]), np.max(self.element_array[:,3])))
 
         self.plotElement(self)
+
+        # ---- Skewed measured spectrum overlay ----
+        _skew_meas = self.ScaleSkew_rollbox.value() if hasattr(self, 'ScaleSkew_rollbox') else 0.0
+        _curve_name = '_SkewedMeasSpectrum'
+        if _skew_meas != 0.0 and hasattr(self, 'spectrumX') and hasattr(self, 'spectrumY_resp') \
+                and self.spectrumX is not None and self.spectrumY_resp is not None:
+            _meas_wl = np.array(self.spectrumX)
+            _meas_y  = np.array(self.spectrumY_resp)
+            if len(_meas_wl) > 0 and len(_meas_wl) == len(_meas_y):
+                _ref_wl       = _meas_wl[0]
+                _skew_vec     = 10 ** (_skew_meas * (_ref_wl - _meas_wl))
+                _skewed_y     = _meas_y * _skew_vec
+                # Scale the skewed curve to match the original at 518 nm (Mg line)
+                _idx_518      = int(np.argmin(np.abs(_meas_wl - 518.0)))
+                _orig_at_518  = _meas_y[_idx_518]
+                _skew_at_518  = _skewed_y[_idx_518]
+                if _skew_at_518 != 0.0:
+                    _skewed_y = _skewed_y * (_orig_at_518 / _skew_at_518)
+                if globals().get(_curve_name) is None:
+                    self.Plot.addLegend()
+                    globals()[_curve_name] = self.Plot.plot(
+                        _meas_wl, _skewed_y,
+                        pen=pg.mkPen(color=(200, 200, 200), width=2,
+                                     style=QtCore.Qt.DashLine),
+                        name='Skewed Spectrum',
+                    )
+                else:
+                    globals()[_curve_name].setData(_meas_wl, _skewed_y)
+            # Store for use by _active_spectrum()
+            self._spectrumY_skewed = _skewed_y
+        else:
+            # Skew is zero: hide the overlay if it exists
+            if globals().get(_curve_name) is not None:
+                globals()[_curve_name].setData([], [])
+            self._spectrumY_skewed = None
+        # ---- End skewed measured spectrum overlay ----
+
+        # ---- TEMPORARY DEBUG POPUP — remove when skew testing is done ----
+        # Shows responsivity-corrected, skew-corrected, and estimated continuum.
+        _show_debug = (hasattr(self, 'ShowDebug_checkbox')
+                       and self.ShowDebug_checkbox.isChecked())
+        try:
+            if _show_debug and hasattr(self, 'spectrumX') and hasattr(self, 'spectrumY_resp') \
+                    and self.spectrumX is not None and self.spectrumY_resp is not None:
+                import matplotlib.pyplot as _plt
+                _wl   = np.array(self.spectrumX)
+                _orig = np.array(self.spectrumY_resp)
+                _fig, (_ax1, _ax2) = _plt.subplots(2, 1, figsize=(12, 9),
+                                                    sharex=True)
+                # ---- Top panel: raw spectra + continuum overlay ----
+                _ax1.plot(_wl, _orig, color='steelblue', linewidth=1.5,
+                          label='Responsivity corrected')
+                _skewed = getattr(self, '_spectrumY_skewed', None)
+                if _skewed is not None:
+                    _idx518 = int(np.argmin(np.abs(_wl - 518.0)))
+                    _ratio  = (_orig[_idx518] / _skewed[_idx518]
+                               if _skewed[_idx518] != 0.0 else 1.0)
+                    _ax1.plot(_wl, _skewed * _ratio,
+                              color='darkorange', linewidth=1.5,
+                              linestyle='--', label='Skew corrected (scaled to 518 nm)')
+                # Compute and show the continuum estimate
+                _continuum = self._estimate_continuum(_wl, _orig,
+                                                      fe_active=self._fe_is_active())
+                _ax1.plot(_wl, _continuum, color='crimson', linewidth=1.5,
+                          linestyle=':', label='Continuum estimate')
+                _ax1.axvline(518, color='grey', linewidth=0.8, linestyle=':',
+                             label='518 nm (Mg)')
+                _ax1.axvline(589, color='olive', linewidth=0.8, linestyle=':',
+                             label='589 nm (Na)')
+                _ax1.axvline(777, color='tomato', linewidth=0.8, linestyle=':',
+                             label='777 nm (O)')
+                _ax1.set_ylabel('Intensity')
+                _ax1.set_title('[DEBUG] Responsivity vs Skew-corrected spectrum + continuum')
+                _ax1.legend(fontsize=8)
+                # ---- Bottom panel: continuum-subtracted spectrum ----
+                _subtracted = np.clip(_orig - _continuum, 0, None)
+                _ax2.plot(_wl, _subtracted, color='steelblue', linewidth=1.5,
+                          label='Continuum subtracted')
+                _ax2.axhline(0, color='black', linewidth=0.7)
+                _ax2.axvline(518, color='grey', linewidth=0.8, linestyle=':',
+                             label='518 nm (Mg)')
+                _ax2.axvline(589, color='olive', linewidth=0.8, linestyle=':',
+                             label='589 nm (Na)')
+                _ax2.axvline(777, color='tomato', linewidth=0.8, linestyle=':',
+                             label='777 nm (O)')
+                _ax2.set_xlabel('Wavelength (nm)')
+                _ax2.set_ylabel('Intensity (continuum removed)')
+                _ax2.set_title('[DEBUG] Continuum-subtracted spectrum')
+                _ax2.legend(fontsize=8)
+                _plt.tight_layout()
+                _plt.show()
+        except Exception as _e:
+            print(f'[DEBUG popup] Error: {_e}')
+        # ---- END TEMPORARY DEBUG POPUP ----
+
+    def _fe_is_active(self):
+        """Return True if the Fe element is currently set to FITTING (1) or LOCKED (2)."""
+        if not hasattr(self, 'elementDeets') or not hasattr(self, 'spectral'):
+            return False
+        for deet in self.elementDeets:
+            if deet[0] == 'Fe':
+                idx = deet[3]
+                try:
+                    flag = self.spectral.elemdata.els[idx].user_fitflag
+                    return flag in (1, 2)  # FITTING or LOCKED
+                except Exception:
+                    pass
+        return False
+
+    def _estimate_continuum(self, wavelengths, intensities,
+                            spike_half_width_nm=8.0, n_iter=20,
+                            clip_sigma=1.2,
+                            fe_active=False,
+                            fe_spike_half_width_nm=64.0,
+                            fe_blend_centre_nm=550.0,
+                            fe_blend_width_nm=50.0):
+        """Estimate the low-frequency continuum underneath narrow emission lines.
+
+        Algorithm — iterative asymmetric sigma-clipping + Savitzky-Golay:
+          1. Estimate the smoothing window in pixels from the nm/pixel spacing.
+          2. Apply a wide SG filter to get an initial continuum estimate.
+          3. Replace pixels more than clip_sigma×std above the smooth (upward
+             spikes only) with the smooth value, then re-smooth.  Repeat n_iter
+             times.  The final smooth is the continuum.
+
+        When fe_active=True a second, much wider continuum is computed for the
+        Fe-rich short-wavelength region (below fe_blend_centre_nm) using
+        fe_spike_half_width_nm.  The two estimates are blended with a sigmoid
+        crossfade centred at fe_blend_centre_nm over a ±½×fe_blend_width_nm
+        band so the transition is smooth.
+
+        Parameters
+        ----------
+        wavelengths           : 1-D array of wavelength values (nm)
+        intensities           : 1-D array of responsivity-corrected intensities
+        spike_half_width_nm   : half-width for normal (non-Fe) region (nm)
+        n_iter                : clipping iterations (default 20)
+        clip_sigma            : upward clipping threshold in residual-std units
+        fe_active             : if True, apply wider smoothing below blend centre
+        fe_spike_half_width_nm: half-width for the Fe-multiplet region (nm, default 64)
+        fe_blend_centre_nm    : wavelength at which the two estimates cross-fade (nm)
+        fe_blend_width_nm     : total width of the sigmoid crossfade band (nm)
+
+        Returns
+        -------
+        continuum : 1-D numpy array, same length as intensities
+        """
+        from scipy.signal import savgol_filter as _sg
+        import numpy as _np
+
+        wl = _np.asarray(wavelengths, dtype=float)
+        y  = _np.asarray(intensities, dtype=float)
+        n  = len(wl)
+        if n < 5:
+            return y.copy()
+
+        nm_per_px = (wl[-1] - wl[0]) / (n - 1) if n > 1 else 1.0
+
+        def _run(width_nm):
+            """Run the iterative clipping algorithm with a given spike half-width."""
+            win = max(5, int(3 * width_nm / nm_per_px))
+            if win % 2 == 0:
+                win += 1
+            poly = min(3, win - 1)
+            work = y.copy()
+            for _ in range(n_iter):
+                sm = _sg(work, window_length=win, polyorder=poly, mode='nearest')
+                res = work - sm
+                pos = res[res > 0]
+                if len(pos) == 0:
+                    break
+                std = _np.std(pos)
+                work[res > clip_sigma * std] = sm[res > clip_sigma * std]
+            return _sg(work, window_length=win, polyorder=poly, mode='nearest')
+
+        # ---- Standard continuum (narrow window) ---------------------------------
+        cont_narrow = _run(spike_half_width_nm)
+
+        if not fe_active:
+            return _np.clip(cont_narrow, 0, None)
+
+        # ---- Fe-aware: wide window for the iron-multiplet region ----------------
+        cont_wide = _run(fe_spike_half_width_nm)
+
+        # Sigmoid blend: wide below blend_centre, narrow above.
+        # alpha → 1 (wide) at short λ, alpha → 0 (narrow) at long λ.
+        k = 8.0 / fe_blend_width_nm          # steepness parameter
+        alpha = 1.0 / (1.0 + _np.exp(k * (wl - fe_blend_centre_nm)))
+        continuum = alpha * cont_wide + (1.0 - alpha) * cont_narrow
+        return _np.clip(continuum, 0, None)
+
+    def _active_spectrum(self):
+        """Return the spectrum to use for calculations.
+
+        If ScaleSkew_checkbox is checked and a skewed spectrum has been
+        computed, return that; otherwise return the raw responsivity-
+        corrected spectrum.
+        """
+        checkbox_on = (
+            hasattr(self, 'ScaleSkew_checkbox')
+            and self.ScaleSkew_checkbox.isChecked()
+        )
+        skewed = getattr(self, '_spectrumY_skewed', None)
+        if checkbox_on and skewed is not None:
+            return skewed
+        return self.spectrumY_resp
 
     def fitMeasuredSpectrum(self):
         """ Call fitMeasSpec from the Gural spectral library which does the following...
@@ -1931,9 +2144,15 @@ class Ui(QtWidgets.QMainWindow):
 
 
 
-        self.element_array[:,1] = self.element_array[:,1] * 10**self.Scale_rollbox.value()
-        self.element_array[:,2] = self.element_array[:,2] * 10**self.Scale_rollbox.value()
-        self.element_array[:,3] = self.element_array[:,3] * 10**self.Scale_rollbox.value()
+        _base_scale = self.Scale_rollbox.value()
+        _skew = self.ScaleSkew_rollbox.value() if hasattr(self, 'ScaleSkew_rollbox') else 0.0
+        _wavelengths = self.element_array[:, 0]
+        _lambda_ref = _wavelengths[0] if len(_wavelengths) > 0 else 0.0
+        # Per-wavelength multiplier: 10^(base + skew*(λ - λ_ref))
+        _scale_vec = 10 ** (_base_scale + _skew * (_lambda_ref - _wavelengths))
+        self.element_array[:,1] = self.element_array[:,1] * _scale_vec
+        self.element_array[:,2] = self.element_array[:,2] * _scale_vec
+        self.element_array[:,3] = self.element_array[:,3] * _scale_vec
 
     def resetAllElementalAbundances(self):
         spectral_library.GuralSpectral.resetAllElementalAbundances(self.spectral)
@@ -3395,7 +3614,7 @@ class Ui(QtWidgets.QMainWindow):
                         pg.LinearRegionItem(values=fe_range, orientation='vertical', brush=(100, 100, 255, 50), movable=False))
 
                 wavelengths = np.array(self.spectrumX)
-                intensities = np.array(self.spectrumY_resp)
+                intensities = np.array(self._active_spectrum())
 
                 # Mg continuum
                 ## ATTEMPTING AT USER DEFINED RANGES ; MARKED LINES WERE WHERE VARIABLES WERE SWAPPED
@@ -3541,7 +3760,7 @@ class Ui(QtWidgets.QMainWindow):
         #    self.spectral.spectra.meas_spectrum[i] = spec_ptr[i]
         wavelength_nm = np.ctypeslib.as_array(self.spectral.spcalib.wavelength_nm, shape=(1500,))  # This is the full range 0-1500
 
-        interpolated_meas = np.interp(wavelength_nm, scaled_spectral_profile_short, self.spectrumY_resp)
+        interpolated_meas = np.interp(wavelength_nm, scaled_spectral_profile_short, self._active_spectrum())
 
         # Assign to self.spectral.spectra.meas_spectrum
         spec_ptr = interpolated_meas.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
@@ -3621,7 +3840,7 @@ class Ui(QtWidgets.QMainWindow):
                         pg.LinearRegionItem(values=fe_range, orientation='vertical', brush=(100, 100, 255, 50), movable=False))
 
                 wavelengths = np.array(self.spectrumX)
-                intensities = np.array(self.spectrumY_resp)
+                intensities = np.array(self._active_spectrum())
 
                 # Mg continuum
                 mg_left_mask = (wavelengths >= mg_continuum_left[0]) & (wavelengths <= mg_continuum_left[1])
@@ -4212,7 +4431,7 @@ class Ui(QtWidgets.QMainWindow):
 
         try:
             wavelengths = np.array(self.spectrumX)
-            intensities = np.array(self.spectrumY_resp)
+            intensities = np.array(self._active_spectrum())
 
             for fe_range in fe_ranges:
                 fe_mask = (wavelengths >= fe_range[0]) & (wavelengths <= fe_range[1])
@@ -4329,7 +4548,7 @@ class Ui(QtWidgets.QMainWindow):
 
             # Extract the spectrum data
             wavelengths = np.array(self.spectrumX)
-            intensities = np.array(self.spectrumY_resp) 
+            intensities = np.array(self._active_spectrum()) 
 
             # Integrated Iron Lines
             # fe_lines = [427.3, 430.8, 432.6, 438.4, 440.5, 492.0, 495.7, 504.7, 526.9, 532.8, 537.1, 540.4, 543.1, 544.9]
@@ -4533,7 +4752,7 @@ class Ui(QtWidgets.QMainWindow):
 
             # Extract the spectrum data
             wavelengths = np.array(self.spectrumX)
-            intensities = np.array(self.spectrumY_resp) 
+            intensities = np.array(self._active_spectrum()) 
 
             # Fit linear continuum for Mg
             mg_left_mask = (wavelengths >= mg_continuum_left[0]) & (wavelengths <= mg_continuum_left[1])
@@ -4753,7 +4972,7 @@ class Ui(QtWidgets.QMainWindow):
 
             # Extract the spectrum data
             wavelengths = np.array(self.spectrumX)
-            intensities = np.array(self.spectrumY_resp) 
+            intensities = np.array(self._active_spectrum()) 
 
             # Fit linear continuum for Mg
             mg_left_mask = (wavelengths >= mg_continuum_left[0]) & (wavelengths <= mg_continuum_left[1])

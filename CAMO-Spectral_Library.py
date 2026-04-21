@@ -1735,10 +1735,10 @@ class GuralSpectral(object):
 		meas = np.ctypeslib.as_array(self.spectra.meas_spectrum, shape=(self.spcalib.nwavelengths,))
 		fit = np.ctypeslib.as_array(self.spectra.fit_spectrum, shape=(self.spcalib.nwavelengths,))
 		extn = np.ctypeslib.as_array(self.spcalib.modl_extn_spec, shape=(self.spcalib.nwavelengths,))
-		plt.plot(wavelengths, 1/extn)
-		plt.title("Gural Extinction Model")
-		plt.legend()
-		plt.show()
+		# plt.plot(wavelengths, 1/extn)
+		# plt.title("Gural Extinction Model")
+		# plt.legend()
+		# plt.show()
 		
 
 	def scaleWarmColumnDensity(self, elem, scale_factor):
