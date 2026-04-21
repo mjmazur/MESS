@@ -4508,21 +4508,68 @@ class Ui(QtWidgets.QMainWindow):
     #Keep this function for continuum subtraction
     def subtractContinuum(self):
         """
-        Perform linear continuum subtraction around Mg (518nm) and Na (589nm).
+        Perform continuum subtraction. If Continuum_check is checked, uses the 
+        estimated continuum from _estimate_continuum(). Otherwise, uses the default 
+        linear method around Mg (518nm) and Na (589nm).
         """
         try:
-            # Define wavelength ranges for continuum subtraction
-            mg_continuum_left = (485, 514)  # Left continuum range for Mg
-            mg_continuum_right = (521, 550)  # Right continuum range for Mg
-            na_continuum_left = (570, 585)  # Left continuum range for Na
-            na_continuum_right = (593, 608)  # Right continuum range for Na
+            # Extract the spectrum data
+            wavelengths = np.array(self.spectrumX)
+            intensities = np.array(self._active_spectrum())
+            
+            # Check if Continuum_check is checked
+            use_estimated_continuum = (
+                hasattr(self, 'Continuum_check') 
+                and self.Continuum_check.isChecked()
+            )
+            
+            if use_estimated_continuum:
+                print("Using estimated continuum via _estimate_continuum()")
+                # Estimate the continuum using the Savitzky-Golay filtering method
+                estimated_continuum = self._estimate_continuum(
+                    wavelengths, 
+                    intensities,
+                    spike_half_width_nm=8.0,
+                    n_iter=20,
+                    clip_sigma=1.2,
+                    fe_active=False
+                )
+                # Subtract the estimated continuum from the spectrum
+                corrected_intensities = intensities - estimated_continuum
+                corrected_intensities = np.clip(corrected_intensities, 0, None)
+            else:
+                print("Using default linear continuum subtraction method")
+                # Define wavelength ranges for continuum subtraction
+                mg_continuum_left = (485, 514)  # Left continuum range for Mg
+                mg_continuum_right = (521, 550)  # Right continuum range for Mg
+                na_continuum_left = (570, 585)  # Left continuum range for Na
+                na_continuum_right = (593, 608)  # Right continuum range for Na
 
-            # Accessing user-specified regions to subtract from
-            # mg_left = self.MgLeft_spin.value()
-            # mg_right = self.MgRight_spin.value()
-            # na_left = self.NaLeft_spin.value()
-            # na_right = self.NaRight_spin.value()
+                # Fit linear continuum for Mg
+                mg_left_mask = (wavelengths >= mg_continuum_left[0]) & (wavelengths <= mg_continuum_left[1])
+                mg_right_mask = (wavelengths >= mg_continuum_right[0]) & (wavelengths <= mg_continuum_right[1])
+                mg_continuum_wavelengths = np.concatenate([wavelengths[mg_left_mask], wavelengths[mg_right_mask]])
+                mg_continuum_intensities = np.concatenate([intensities[mg_left_mask], intensities[mg_right_mask]])
 
+                # For horizontal line
+                mg_level = np.median(mg_continuum_intensities)
+                mg_baseline = np.full_like(wavelengths, mg_level)
+
+                # Fit linear continuum for Na
+                na_left_mask = (wavelengths >= na_continuum_left[0]) & (wavelengths <= na_continuum_left[1])
+                na_right_mask = (wavelengths >= na_continuum_right[0]) & (wavelengths <= na_continuum_right[1])
+                na_continuum_wavelengths = np.concatenate([wavelengths[na_left_mask], wavelengths[na_right_mask]])
+                na_continuum_intensities = np.concatenate([intensities[na_left_mask], intensities[na_right_mask]])
+
+                # For horizontal line
+                na_level = np.median(na_continuum_intensities)
+                na_baseline = np.full_like(wavelengths, na_level)
+
+                # Subtract the continuum
+                corrected_intensities = intensities.copy()
+                corrected_intensities[(wavelengths >= 485) & (wavelengths <= 550)] -= mg_baseline[(wavelengths >= 485) & (wavelengths <= 550)]
+                corrected_intensities[(wavelengths >= 570) & (wavelengths <= 608)] -= na_baseline[(wavelengths >= 570) & (wavelengths <= 608)]
+            
             # Calculate average intensity of Fe lines
             fe_ranges=[(420, 455), (485, 514), (521, 550)]
             all_fe_points, fe_averages, top_points, top_n_average, bottom_points, bottom_n_average = self.calculateAverageFeIntensity(fe_ranges)
@@ -4546,11 +4593,8 @@ class Ui(QtWidgets.QMainWindow):
             #fe_average_value = np.mean(list(fe_averages.values())) if fe_averages else 0.0
             print(f"Average Fe intensity: {fe_average_value:.6f}")
 
-            # Extract the spectrum data
-            wavelengths = np.array(self.spectrumX)
-            intensities = np.array(self._active_spectrum()) 
-
             # Integrated Iron Lines
+
             # fe_lines = [427.3, 430.8, 432.6, 438.4, 440.5, 492.0, 495.7, 504.7, 526.9, 532.8, 537.1, 540.4, 543.1, 544.9]
             # fe_int_before = sum(self.integrate_line(wavelengths, intensities, line, width=1.0) for line in fe_lines)
             # print(f"Integrated Fe intensity before subtraction: {fe_int_before:.6f}")
@@ -4595,44 +4639,12 @@ class Ui(QtWidgets.QMainWindow):
 
             # ///////////////////////////////////
 
-            # Fit linear continuum for Mg
-            mg_left_mask = (wavelengths >= mg_continuum_left[0]) & (wavelengths <= mg_continuum_left[1])
-            mg_right_mask = (wavelengths >= mg_continuum_right[0]) & (wavelengths <= mg_continuum_right[1])
-            mg_continuum_wavelengths = np.concatenate([wavelengths[mg_left_mask], wavelengths[mg_right_mask]])
-            mg_continuum_intensities = np.concatenate([intensities[mg_left_mask], intensities[mg_right_mask]])
-            # # For trendline
-            # mg_fit = np.polyfit(mg_continuum_wavelengths, mg_continuum_intensities, deg=1)
-            # mg_baseline = np.polyval(mg_fit, wavelengths)
-
-            # For horizontal line
-            mg_level = np.median(mg_continuum_intensities)
-            mg_baseline = np.full_like(wavelengths, mg_level)
-            
-
-            # Fit linear continuum for Na
-            na_left_mask = (wavelengths >= na_continuum_left[0]) & (wavelengths <= na_continuum_left[1])
-            na_right_mask = (wavelengths >= na_continuum_right[0]) & (wavelengths <= na_continuum_right[1])
-            na_continuum_wavelengths = np.concatenate([wavelengths[na_left_mask], wavelengths[na_right_mask]])
-            na_continuum_intensities = np.concatenate([intensities[na_left_mask], intensities[na_right_mask]])
-            # # For trendline
-            # na_fit = np.polyfit(na_continuum_wavelengths, na_continuum_intensities, deg=1)
-            # na_baseline = np.polyval(na_fit, wavelengths)
-
-            # For horizontal line
-            na_level = np.median(na_continuum_intensities)
-            na_baseline = np.full_like(wavelengths, na_level)
-
-            # Subtract the continuum
-            corrected_intensities = intensities.copy()
-            corrected_intensities[(wavelengths >= 485) & (wavelengths <= 550)] -= mg_baseline[(wavelengths >= 485) & (wavelengths <= 550)]
-            corrected_intensities[(wavelengths >= 570) & (wavelengths <= 608)] -= na_baseline[(wavelengths >= 570) & (wavelengths <= 608)]
-
-            # ///////////////////////////////////
             mg_range = (517.0, 519.0)
             na_range = (588.0, 590.0)
 
             mg_mask = (wavelengths >= mg_range[0]) & (wavelengths <= mg_range[1])
             na_mask = (wavelengths >= na_range[0]) & (wavelengths <= na_range[1])
+
 
             # print("Mg mask points:", np.sum(mg_mask), "Na mask points:", np.sum(na_mask))
             # print("Mg wavelengths:", wavelengths[mg_mask])

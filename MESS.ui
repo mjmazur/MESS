@@ -1409,9 +1409,9 @@
             </widget>
            </item>
            <item>
-            <widget class="QCheckBox" name="checkBox">
+            <widget class="QCheckBox" name="Continuum_check">
              <property name="text">
-              <string>Continuum Models</string>
+              <string>Continuum Model</string>
              </property>
             </widget>
            </item>
