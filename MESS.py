@@ -1179,14 +1179,20 @@ class Ui(QtWidgets.QMainWindow):
         print('Index of max observed: %s' % np.where(star_x == np.round(self.scaled_spectral_x_max)))
 
         self.star_x_clipped = star_x[int(index_min):int(index_max)]
+        self.star_y_clipped = star_y[int(index_min):int(index_max)]
 
         # Set axis titles 
         self.Plot.setLabel('left', 'Intensity')
         self.Plot.setLabel('bottom', 'Wavelength (nm)')
         print('Calib Max: %s' % np.max(star_y))
+        
+        # Offset the stellar spectrum to be plotted above the extracted spectrum
+        offset = np.max(self.spectral_profile) - np.min(self.star_y_clipped) + (np.max(self.spectral_profile) * 0.1)
+        star_y_shifted = self.star_y_clipped + offset
+
         # Create the plot
         pen = pg.mkPen(width = 2)
-        self.Plot.plot(star_x, star_y, pen = pen)
+        self.Plot.plot(self.star_x_clipped, star_y_shifted, pen = pen)
 
         
     def stellarCalibrationClicked(self):
