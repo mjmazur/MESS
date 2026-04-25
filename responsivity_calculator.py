@@ -3,8 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 import argparse
-from PyQt5.QtWidgets import QApplication, QMainWindow, QSplitter, QWidget, QVBoxLayout, QInputDialog, QMessageBox, QAction, QFileDialog, QToolBar
+from PyQt5.QtWidgets import QApplication, QMainWindow, QSplitter, QWidget, QVBoxLayout, QInputDialog, QMessageBox, QAction, QFileDialog, QToolBar, QShortcut
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QKeySequence
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
@@ -142,7 +143,7 @@ class SpectralScaler:
         self.img_plot = self.ax.imshow(self.image_data, cmap='viridis', origin='upper', vmin=vmin, vmax=vmax)
         self.fig.colorbar(self.img_plot, label='Intensity', ax=self.ax)
         
-        self.ax.set_title(f"Spectral Calibration: {filename}\nClick on features to assign wavelengths. Close window when done.")
+        self.ax.set_title(f"Spectral Calibration: {filename}\nShift-click on features to assign wavelengths.")
         self.ax.set_xlabel("Pixel X")
         self.ax.set_ylabel("Pixel Y")
         
@@ -169,6 +170,11 @@ class SpectralScaler:
 
     def onclick(self, event):
         if event.inaxes != self.ax:
+            return
+            
+        if event.key != 'shift':
+            if event.button in [1, 3]:  # only print for actual mouse clicks, not hover events
+                print(f"Ignored click: 'shift' key not held (event.key was '{event.key}')")
             return
         
         px = event.xdata
@@ -421,7 +427,7 @@ class InteractiveProfile:
             
             self.ax_star.plot(self.ref_spec[0], self.ref_spec[1], 'r-')
             self.ax_star.set_ylabel("Intensity")
-            self.ax_star.set_title(f"Reference Star Spectrum")
+            self.ax_star.set_title(f"Reference Star Spectrum", fontsize=15)
             self.ax_star.grid(True, alpha=0.3)
             
             self.ax_prof.plot(wls, self.profile, 'b-')
@@ -445,6 +451,7 @@ class InteractiveProfile:
         self.ax_prof.set_ylabel("Intensity")
         self.ax_prof.set_title(f"Extracted Spectrum Profile: {filename}")
         self.ax_prof.grid(True, alpha=0.3)
+        self.ax_prof.set_ylim(bottom=np.median(self.profile) - 100)
         
         if hasattr(self.scaler, 'm') and hasattr(self.scaler, 'c'):
             info_text = f"Scale: {self.scaler.m:.4f} nm/px\nIntercept: {self.scaler.c:.2f} nm"
@@ -495,6 +502,11 @@ class InteractiveProfile:
         self.canvas.draw()
 
     def onclick(self, event):
+        if event.key != 'shift':
+            if event.button in [1, 3]:
+                print(f"Ignored click: 'shift' key not held (event.key was '{event.key}')")
+            return
+            
         if not hasattr(self, 'ax_star'):
             valid_axes = [self.ax_prof, self.ax_strip]
             if event.inaxes not in valid_axes:
@@ -688,6 +700,7 @@ class MainWindow(QMainWindow):
         left_layout = QVBoxLayout(left_widget)
         self.img_fig = Figure(figsize=(8, 8))
         self.img_canvas = FigureCanvas(self.img_fig)
+        self.img_canvas.setFocusPolicy(Qt.StrongFocus)
         self.img_ax = self.img_fig.add_subplot(111)
         left_layout.addWidget(NavigationToolbar(self.img_canvas, self))
         left_layout.addWidget(self.img_canvas)
@@ -698,6 +711,7 @@ class MainWindow(QMainWindow):
         right_layout = QVBoxLayout(right_widget)
         self.prof_fig = Figure(figsize=(8, 8))
         self.prof_canvas = FigureCanvas(self.prof_fig)
+        self.prof_canvas.setFocusPolicy(Qt.StrongFocus)
         right_layout.addWidget(NavigationToolbar(self.prof_canvas, self))
         right_layout.addWidget(self.prof_canvas)
         self.splitter.addWidget(right_widget)
@@ -706,8 +720,12 @@ class MainWindow(QMainWindow):
         toolbar = QToolBar("Main Toolbar")
         self.addToolBar(toolbar)
         export_action = QAction("Export CSV", self)
-        export_action.triggered.connect(self.export_csv)
+        export_action.triggered.connect(lambda: self.export_csv(prompt=True))
         toolbar.addAction(export_action)
+        
+        # Shortcut
+        self.shortcut_export = QShortcut(QKeySequence("Ctrl+S"), self)
+        self.shortcut_export.activated.connect(lambda: self.export_csv(prompt=True))
         
         self.init_left()
         
@@ -727,7 +745,11 @@ class MainWindow(QMainWindow):
             ax_prof, ax_strip = self.prof_fig.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1], 'hspace': 0.3}, sharex=True)
             self.profile_app = InteractiveProfile(strip, profile, self.filename, scaler=scaler, canvas=self.prof_canvas, fig=self.prof_fig, ax_prof=ax_prof, ax_strip=ax_strip)
 
-    def export_csv(self):
+    def closeEvent(self, event):
+        self.export_csv(prompt=False, silent=True)
+        event.accept()
+
+    def export_csv(self, prompt=False, silent=False):
         if hasattr(self, 'profile_app') and hasattr(self.profile_app, 'resp_data') and self.star_info:
             wls, resp = self.profile_app.resp_data
             xlims = self.profile_app.ax_resp.get_xlim()
@@ -747,6 +769,12 @@ class MainWindow(QMainWindow):
                 csv_filename = f"response_{common_name}_{sao_num}_{date_str}.csv"
                 out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), csv_filename)
                 
+                if prompt:
+                    selected_path, _ = QFileDialog.getSaveFileName(self, "Save Responsivity CSV", out_path, "CSV Files (*.csv)")
+                    if not selected_path:
+                        return
+                    out_path = selected_path
+                
                 out_wls = np.arange(300, 1101, 1.0)
                 out_resp = np.interp(out_wls, vis_wls, vis_resp)
                 
@@ -755,13 +783,17 @@ class MainWindow(QMainWindow):
                         f.write("Wavelength_nm,Responsivity\n")
                         for w, r in zip(out_wls, out_resp):
                             f.write(f"{w:.1f},{r:.8f}\n")
-                    QMessageBox.information(self, "Export Successful", f"Saved to:\n{out_path}")
+                    if not silent:
+                        QMessageBox.information(self, "Export Successful", f"Saved to:\n{out_path}")
                 except Exception as e:
-                    QMessageBox.critical(self, "Export Error", f"Error saving CSV:\n{e}")
+                    if not silent:
+                        QMessageBox.critical(self, "Export Error", f"Error saving CSV:\n{e}")
             else:
-                QMessageBox.warning(self, "Export Error", "No visible responsivity data to export.")
+                if not silent:
+                    QMessageBox.warning(self, "Export Error", "No visible responsivity data to export.")
         else:
-            QMessageBox.warning(self, "Export Error", "Calibration incomplete or no reference star.")
+            if not silent:
+                QMessageBox.warning(self, "Export Error", "Calibration incomplete or no reference star.")
 
 def main():
     default_dir = "/srv/meteor/klingon/spectral/mirchk"

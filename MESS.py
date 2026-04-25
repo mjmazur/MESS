@@ -1091,8 +1091,6 @@ class Ui(QtWidgets.QMainWindow):
 
         try:
             self.responsivityDefault = np.genfromtxt('DefaultResponsivity-EMCCD.csv', delimiter=',', skip_header=2)
-            # self.responsivityDefault = np.genfromtxt('DefaultResponsivity-EMCCD2.csv', delimiter=',', skip_header=2)
-            # self.responsivityDefault = np.genfromtxt('FS9910.csv', delimiter=',', skip_header=2)
             print('Loaded default responsivity curve.')
         except:
             print('Unable to load default responsivity curve!')
@@ -2821,17 +2819,33 @@ class Ui(QtWidgets.QMainWindow):
     ################# SPECTRAL FILE CONTROL FUNCTIONS #################
 
     def uploadResponsivity(self):
-        dlg = QFileDialog(filter='TXT files (*.txt)')
-        dlg.setFileMode(QFileDialog.AnyFile)
+        dlg = QFileDialog(filter='CSV/TXT files (*.csv *.txt);;All files (*)')
+        dlg.setFileMode(QFileDialog.ExistingFile)
 
         if dlg.exec():
-            response_file_name = dlg.selectedFiles()
-            
-            if response_file_name[0].endswith('.txt'):
-                # Load the text file
-                print('Loading response...')
-            else:
-                pass
+            response_file_name = dlg.selectedFiles()[0]
+            try:
+                # Try comma delimiter first (format from responsivity_calculator)
+                new_resp = np.genfromtxt(response_file_name, delimiter=',', skip_header=1)
+                
+                # Fallback for space-separated files
+                if np.isnan(new_resp).all() or new_resp.size == 0:
+                    new_resp = np.genfromtxt(response_file_name, skip_header=1)
+                    
+                if new_resp.ndim == 2 and new_resp.shape[1] >= 2:
+                    self.responsivityDefault = new_resp
+                    print(f'Successfully loaded custom responsivity curve from {response_file_name}')
+                    
+                    # If plot is already active, trigger an update
+                    try:
+                        self.plotMeasuredSpec()
+                    except Exception:
+                        pass
+                else:
+                    QMessageBox.warning(self, "Load Error", "The file format does not match the expected 2-column format.")
+            except Exception as e:
+                print(f"Error loading responsivity: {e}")
+                QMessageBox.critical(self, "Load Error", f"Could not load responsivity file:\n{e}")
 
     def uploadFlux(self):
         dlg = QFileDialog(filter='TXT files (*.txt)')
@@ -3724,25 +3738,39 @@ class Ui(QtWidgets.QMainWindow):
                 spectral_profile_short.append(spectral_profile[i])
 
         ##Interpolate responsivity curve to match scaled_spectral_profile
-        #xM = self.responsivityDefault[:,0]SS
-        #yM = self.responsivityDefault[:,1] /np.max(self.responsivityDefault[:,1])
-        #fM = interpolate.interp1d(xM,yM)
-        #yMnew = 1/fM(scaled_spectral_profile_short)
-        #yMsg = savgol_filter(yMnew,101,2)
-        
-        xM = self.spectral.spcalib.wavelength_nm[0:1200]
-        yMnorm = self.spectral.spcalib.cumm_resp_spec[0:1200] / np.max(self.spectral.spcalib.cumm_resp_spec[0:1200])
-        yMsg = savgol_filter(self.spectral.spcalib.cumm_resp_spec[0:1200], 101, 2)
-        #yM = yMsg/ np.min(yMsg)
-        #fM = interpolate.interp1d(xM,yM)
-        fM = interpolate.interp1d(xM,yMnorm)
-        #yMnew = 1/fM(scaled_spectral_profile_short) 
-        yMnew = 1 / np.clip(fM(scaled_spectral_profile_short), 1e-10, None)
-
+        if hasattr(self, 'responsivityDefault') and self.responsivityDefault is not None:
+            xM = self.responsivityDefault[:, 0]
+            yM = self.responsivityDefault[:, 1]
+            
+            # Normalize user responsivity to max 1 for stability
+            yMnorm = yM / np.clip(np.max(yM), 1e-10, None)
+            
+            fM = interpolate.interp1d(xM, yMnorm, bounds_error=False, fill_value=(yMnorm[0], yMnorm[-1]))
+            resp_interp = np.clip(fM(scaled_spectral_profile_short), 1e-10, None)
+            
+            # Flux = counts / responsivity
+            self.spectrumY_resp = spectral_profile_short / resp_interp
+            # Normalize for plotting
+            self.spectrumY_resp = self.spectrumY_resp / np.max(self.spectrumY_resp)
+        else:
+            # Original spcalib fallback
+            xM = self.spectral.spcalib.wavelength_nm[0:1200]
+            yMnorm = self.spectral.spcalib.cumm_resp_spec[0:1200] / np.max(self.spectral.spcalib.cumm_resp_spec[0:1200])
+            fM = interpolate.interp1d(xM, yMnorm, bounds_error=False, fill_value=(yMnorm[0], yMnorm[-1]))
+            yMnew = 1 / np.clip(fM(scaled_spectral_profile_short), 1e-10, None)
+            self.spectrumY_resp = np.divide(spectral_profile_short, yMnew/np.max(yMnew))
+            
         self.plotMax = np.max(spectral_profile_short)
-        self.spectrumX = scaled_spectral_profile_short
-        self.spectrumY = np.array(spectral_profile_short) #/np.max(spectral_profile_short) 
-        self.spectrumY_resp = np.divide(spectral_profile_short,yMnew/np.max(yMnew))
+        self.spectrumX = np.array(scaled_spectral_profile_short)
+        self.spectrumY = np.array(spectral_profile_short)
+
+        # Scale self.spectrumY_resp to match self.spectrumY between 515 and 520 nm
+        mask = (self.spectrumX >= 515) & (self.spectrumX <= 520)
+        if np.any(mask):
+            mean_y = np.mean(self.spectrumY[mask])
+            mean_resp = np.mean(self.spectrumY_resp[mask])
+            if mean_resp > 0:
+                self.spectrumY_resp = self.spectrumY_resp * (mean_y / mean_resp)
 
         # Set axis titles 
         self.Plot.setLabel('left', 'Intensity')
